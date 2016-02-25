@@ -1,6 +1,6 @@
 var camera, scene, renderer;
 var state = {
-    phase: "loading",
+    phase: 'loading',
     score: 0,
     tries: 3,
     shots: 0
@@ -11,10 +11,13 @@ var loadingService = {
 	max: 0,
 	display: document.querySelector('progress'),
 	registerFinFunc: function(func) {
+        // TODO: Replace this shit with promises
 		loadingService.onFinished = func;
 	},
 	push: function(amount) {
+        // TODO: Work out what the fuck this is
 		loadingService.count += typeof amount === 'undefined' ? 1 : amount;
+
 		if (loadingService.count > loadingService.max) {
 			loadingService.max = loadingService.count;
 		}
@@ -23,6 +26,7 @@ var loadingService = {
 		if(--loadingService.count === 0) {
 			loadingService.onFinished();
 		}
+
 		loadingService.display.value = (loadingService.max - loadingService.count) / loadingService.max;
 	}
 };
@@ -41,6 +45,8 @@ var world, time, lastTime = performance.now();
 var ballBody, goalieBody, wallBody;
 var ballBodyMaterial;
 var ballGround;
+
+// TODO: Replace this shit with a map we can iterate over
 var cheerSound = new Audio;
 var collideSound = new Audio;
 var crossbarSound = new Audio;
@@ -48,22 +54,22 @@ var crowdSound = new Audio;
 var goalSound = new Audio;
 var jeerSound = new Audio;
 var kickSound = new Audio;
-if (crowdSound.canPlayType("audio/ogg")) {
-    cheerSound.src = "sounds/cheer.ogg";
-    collideSound.src = "sounds/collide.ogg";
-    crossbarSound.src = "sounds/crossbar.ogg";
-    crowdSound.src = "sounds/crowd1.ogg";
-    goalSound.src = "sounds/goal.ogg";
-    jeerSound.src = "sounds/jeer.ogg";
-    kickSound.src = "sounds/kick.ogg"
-} else if (crowdSound.canPlayType("audio/mpeg")) {
-    cheerSound.src = "sounds/cheer.mp3";
-    collideSound.src = "sounds/collide.mp3";
-    crossbarSound.src = "sounds/crossbar.mp3";
-    crowdSound.src = "sounds/crowd1.mp3";
-    goalSound.src = "sounds/goal.mp3";
-    jeerSound.src = "sounds/jeer.mp3";
-    kickSound.src = "sounds/kick.mp3"
+if (crowdSound.canPlayType('audio/ogg')) {
+    cheerSound.src = 'sounds/cheer.ogg';
+    collideSound.src = 'sounds/collide.ogg';
+    crossbarSound.src = 'sounds/crossbar.ogg';
+    crowdSound.src = 'sounds/crowd1.ogg';
+    goalSound.src = 'sounds/goal.ogg';
+    jeerSound.src = 'sounds/jeer.ogg';
+    kickSound.src = 'sounds/kick.ogg'
+} else if (crowdSound.canPlayType('audio/mpeg')) {
+    cheerSound.src = 'sounds/cheer.mp3';
+    collideSound.src = 'sounds/collide.mp3';
+    crossbarSound.src = 'sounds/crossbar.mp3';
+    crowdSound.src = 'sounds/crowd1.mp3';
+    goalSound.src = 'sounds/goal.mp3';
+    jeerSound.src = 'sounds/jeer.mp3';
+    kickSound.src = 'sounds/kick.mp3'
 }
 var sounds = [
 	cheerSound,
@@ -78,22 +84,24 @@ loadingService.push(sounds.length);
 sounds.forEach(function(sound) {
 	sound.addEventListener('canplaythrough', loadingService.pop);
 });
+
 var ballTexture = THREE.ImageUtils.loadTexture(
-	"textures/ballTexture.png",
+	'textures/ballTexture.png',
 	new THREE.UVMapping(),
 	loadingService.pop
 );
 var pitchTexture = THREE.ImageUtils.loadTexture(
-	"textures/pitch.png",
+	'textures/pitch.png',
 	new THREE.UVMapping(),
 	loadingService.pop
 );
 var wallTexture = THREE.ImageUtils.loadTexture(
-	"textures/mannequin.png",
+	'textures/mannequin.png',
 	new THREE.UVMapping(),
 	loadingService.pop
 );
 loadingService.push(3);
+
 var projector, ray, mouse3D;
 var mouseClick = {
     x: 0,
@@ -113,42 +121,49 @@ var mouseDrag = {
         this.y = t
     }
 };
+
 var failTimer;
-document.addEventListener("mousedown", function (e) {
+
+// TODO: Figure out if we need all this preventdefault bidness
+document.addEventListener('mousedown', function (e) {
     mouseDown(e.clientX, e.clientY);
     e.preventDefault()
 }, false);
-document.addEventListener("mousemove", function (e) {
+document.addEventListener('mousemove', function (e) {
     mouseMove(e.clientX, e.clientY);
     e.preventDefault()
-}, false);
-document.addEventListener("mouseup", function (e) {
+});
+document.addEventListener('mouseup', function (e) {
     mouseUp();
     e.preventDefault()
-}, false);
-document.addEventListener("touchstart", function(e) {
+});
+document.addEventListener('touchstart', function(e) {
 	if(e.targetTouches.length === 1) {
 		mouseDown(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
 	}
 	e.preventDefault();
-}, false);
-document.addEventListener("touchmove", function(e) {
+});
+document.addEventListener('touchmove', function(e) {
 	if(e.targetTouches.length === 1) {
 		mouseMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
 	}
 	e.preventDefault();
-}, false);
-document.addEventListener("touchend", function(e) {
+});
+document.addEventListener('touchend', function(e) {
 	mouseUp();
 	e.preventDefault();
-}, false);
-document.addEventListener("touchcancel", function(e) {
+});
+document.addEventListener('touchcancel', function(e) {
 	mouseUp();
 	e.preventDefault();
-}, false);
-document.addEventListener("visibilitychange", visibilityChange(), false);
-document.addEventListener("webkitvisibilitychange", visibilityChange(), false);
-window.addEventListener("resize", onWindowResized, false);
+});
+document.addEventListener('visibilitychange', function() {
+    if (document.webkitHidden === false) {
+        lastTime = performance.now()
+    }
+});
+document.addEventListener('webkitvisibilitychange', visibilityChange(), false);
+window.addEventListener('resize', onWindowResized, false);
 loadingService.registerFinFunc(function() {
 	var j = '<p class="popupText">Controls: click on the ball to choose spin, then drag back to choose direction and power.</p>' + '<p class="popupTitle">Click here to play!</p>';
 	printDialog(j, play, false);
@@ -160,7 +175,7 @@ function init() {
         antialias: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    var e = document.getElementById("gameWrap");
+    var e = document.getElementById('gameWrap');
     e.appendChild(renderer.domElement);
     camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1e3);
     renderer.shadowCameraNear = 3;
@@ -216,7 +231,7 @@ function init() {
     p.position.set(0, 2.5, 48);
     scene.add(p);
     var d = THREE.ImageUtils.loadTexture(
-    	"textures/mannequins.png",
+    	'textures/mannequins.png',
     	new THREE.UVMapping(),
     	loadingService.pop
 	);
@@ -237,7 +252,7 @@ function init() {
     wall.position.set(0, .9, 0);
     scene.add(wall);
     var d = THREE.ImageUtils.loadTexture(
-    	"textures/keeper.png",
+    	'textures/keeper.png',
     	new THREE.UVMapping(),
     	loadingService.pop
 	);
@@ -322,30 +337,30 @@ function init() {
     ballBody = new CANNON.RigidBody(.1, B, ballBodyMaterial);
     ballGround = new CANNON.ContactMaterial(N, ballBodyMaterial, 5, .5);
     world.addContactMaterial(ballGround);
-    M.addEventListener("collide", function () {
+    M.addEventListener('collide', function () {
         if (!isMute) crossbarSound.play()
     }, false);
-    C.addEventListener("collide", function () {
+    C.addEventListener('collide', function () {
         if (!isMute) collideSound.play()
     }, false);
-    wallBody.addEventListener("collide", function () {
+    wallBody.addEventListener('collide', function () {
         if (!isMute) collideSound.play()
     }, false);
-    goalieBody.addEventListener("collide", function () {
-        if (state.phase == "simulate") {
+    goalieBody.addEventListener('collide', function () {
+        if (state.phase == 'simulate') {
             if (!isMute) collideSound.play();
             stopBall();
             setTimeout(function () {
                 newBall(false)
             }, 1e3);
             clearTimeout(failTimer);
-            state.phase = "wait"
+            state.phase = 'wait'
         }
     }, false);
     projector = new THREE.Projector;
     ray = new THREE.Raycaster;
     mouse3D = new THREE.Vector3;
-    document.body.style.cursor = "pointer";
+    document.body.style.cursor = 'pointer';
     onWindowResized(null);
     update();
 }
@@ -372,24 +387,18 @@ function mouseDown(x, y) {
 }
 
 function mouseMove(x, y) {
-    if (state.phase == "drag") {
+    if (state.phase == 'drag') {
         mouseDrag.is = true;
         mouseDrag.setPos(x, y)
     }
 }
 
 function mouseUp() {
-    if (state.phase == "drag") {
-        state.phase = "shoot"
+    if (state.phase == 'drag') {
+        state.phase = 'shoot'
     }
     mouseClick.is = false;
     mouseDrag.is = false
-}
-
-function visibilityChange() {
-    if (document.webkitHidden === false) {
-        lastTime = performance.now()
-    }
 }
 
 function play() {
@@ -406,8 +415,8 @@ function play() {
     crowdSound.loop = true;
     if (!isMute) crowdSound.play();
     collideSound.muted = true;
-    var e = document.getElementById("uiWrap");
-    uiWrap.style.display = "block";
+    var e = document.getElementById('uiWrap');
+    uiWrap.style.display = 'block';
     uiUpdate();
     placeBall(0, ballSize, 30);
     world.add(ballBody)
@@ -430,7 +439,7 @@ function reset() {
 var curListener;
 
 function printDialog(e, t, n) {
-    var r = document.querySelector("#popup");
+    var r = document.querySelector('#popup');
     r.innerHTML = e;
     curListener = t;
     if (t) {
@@ -444,19 +453,19 @@ function printDialog(e, t, n) {
 }
 
 function removeDialog() {
-    var r = document.querySelector("#popup");
+    var r = document.querySelector('#popup');
     r.removeEventListener('mousedown', curListener);
     r.removeEventListener('touchstart', curListener);
     r.style.opacity = 0;
 }
 
 function uiUpdate() {
-    var e = [document.getElementById("try1"), document.getElementById("try2"), document.getElementById("try3")];
+    var e = [document.getElementById('try1'), document.getElementById('try2'), document.getElementById('try3')];
     for (var t = 0; t < 3; t++) {
-        t < state.tries ? e[t].style.display = "block" : e[t].style.display = "none"
+        t < state.tries ? e[t].style.display = 'block' : e[t].style.display = 'none'
     }
-    var n = document.getElementById("score");
-    n.innerHTML = "Goals: " + state.score + "<br />Total tries: " + state.shots
+    var n = document.getElementById('score');
+    n.innerHTML = 'Goals: ' + state.score + '<br />Total tries: ' + state.shots
 }
 
 function playSound(e) {
@@ -499,7 +508,7 @@ function newBall(e) {
         placeBall(xPos, ballSize, t)
     } else if (!isDebug) {
         setTimeout(function () {
-            printDialog('<p class="popupText">You scored ' + state.score + ' goals.</p><p class="popupTitle">Click here to try again!</p>', reset, false)
+            printDialog('<p class='popupText'>You scored ' + state.score + ' goals.</p><p class='popupTitle'>Click here to try again!</p>', reset, false)
         }, 1e3)
     }
     collideSound.muted = true;
@@ -542,7 +551,7 @@ function placeBall(e, t, n) {
     }
     var a = new THREE.Vector3(r.x, .5, r.z);
     camera.lookAt(a);
-    state.phase = "play"
+    state.phase = 'play'
 }
 
 function kickBall(e, t, n) {
@@ -560,7 +569,7 @@ function goalieUpdate(e) {
         return
     }
     var t;
-    if (state.phase == "simulate" && ballBody.velocity.z > 0) {
+    if (state.phase == 'simulate' && ballBody.velocity.z > 0) {
         var n = (48 - ballBody.position.z) / ballBody.velocity.z;
         var r = ballBody.position.x + ballBody.velocity.x * n;
         t = r - goalieBody.position.x
@@ -591,18 +600,18 @@ function bendBall(e) {
 }
 
 function update() {
-    if (state.phase == "play") {
+    if (state.phase == 'play') {
         if (mouseClick.is && isIntersected && !mouseDrag.is) {
             if (Math.sqrt(origin.x * origin.x + origin.y * origin.y) < ballSize) {
                 goalDir.set(-ball.position.x, 0, 48 - ball.position.z);
                 goalDir.normalize();
                 shotDir.copy(goalDir);
                 shotPow = 0;
-                state.phase = "drag"
+                state.phase = 'drag'
             }
             isIntersected = false
         }
-    } else if (state.phase == "drag") {
+    } else if (state.phase == 'drag') {
     	var diffX = (mouseDrag.x - mouseClick.x) / window.innerHeight;
         var diffY = (mouseDrag.y - mouseClick.y) / window.innerHeight;
         shotDir.set(goalDir.x + Math.sin(diffX), 0, goalDir.z + 1 - Math.cos(diffX));
@@ -618,22 +627,22 @@ function update() {
         } else {
             arrow.material.visible = false
         }
-    } else if (state.phase == "shoot") {
+    } else if (state.phase == 'shoot') {
         if (shotPow > .01 && shotDir.z > 0) {
             var n = new THREE.Vector3;
             var r = 20 + 60 * shotPow * 4;
             n.copy(shotDir);
             n.multiplyScalar(r * 2);
             kickBall(n.x, r / 2, n.z);
-            state.phase = "simulate";
+            state.phase = 'simulate';
             failTimer = setTimeout(function () {
                 newBall(false)
             }, 6e3)
         } else {
-            state.phase = "play"
+            state.phase = 'play'
         }
         arrow.material.visible = false
-    } else if (state.phase == "simulate") {
+    } else if (state.phase == 'simulate') {
         if (ballBody.position.z > 48 && ballBody.position.z < 50) {
             if (ballBody.position.x > -3.72 && ballBody.position.x < 3.72 && ballBody.position.y < 2.56) {
                 stopBall();
@@ -641,22 +650,22 @@ function update() {
                     goalSound.play();
                     playSound(cheerSound)
                 }
-                printDialog('<p class="popupTitle">Goal!</p>', false, 1e3);
+                printDialog('<p class='popupTitle'>Goal!</p>', false, 1e3);
                 setTimeout(function () {
                     newBall(true)
                 }, 1e3);
                 clearTimeout(failTimer);
-                state.phase = "wait"
+                state.phase = 'wait'
             } else {
                 if (ballBody.position.x < -5.2 || ballBody.position.x > 5.2 || ballBody.position.y > 3.2) {
                     if (!isMute) playSound(jeerSound)
                 }
-                printDialog('<p class="popupTitle">Miss...</p>', false, 1e3);
+                printDialog('<p class='popupTitle'>Miss...</p>', false, 1e3);
                 setTimeout(function () {
                     newBall(false)
                 }, 1e3);
                 clearTimeout(failTimer);
-                state.phase = "wait"
+                state.phase = 'wait'
             }
         }
     }
@@ -669,7 +678,7 @@ function update() {
 function render() {
     time = performance.now();
     var e = (time - lastTime) * .001;
-    if (state.phase == "simulate" || state.phase == "wait") {
+    if (state.phase == 'simulate' || state.phase == 'wait') {
         goalieUpdate(e);
         bendBall(e);
         world.step(e)

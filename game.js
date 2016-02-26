@@ -7,28 +7,27 @@ var state = {
 };
 
 var loadingService = {
-	count: 0,
-	max: 0,
-	display: document.querySelector('progress'),
-	registerFinFunc: function(func) {
+    count: 0,
+    max: 0,
+    display: document.getElementsByTagName('progress')[0],
+    registerFinFunc: function(func) {
         // TODO: Replace this shit with promises
-		loadingService.onFinished = func;
-	},
-	push: function(amount) {
-        // TODO: Work out what the fuck this is
-		loadingService.count += typeof amount === 'undefined' ? 1 : amount;
+        loadingService.onFinished = func;
+    },
+    push: function(amount) {
+        loadingService.count += amount ? amount : 1;
 
-		if (loadingService.count > loadingService.max) {
-			loadingService.max = loadingService.count;
-		}
-	},
-	pop: function() {
-		if(--loadingService.count === 0) {
-			loadingService.onFinished();
-		}
+        if (loadingService.count > loadingService.max) {
+            loadingService.max = loadingService.count;
+        }
+    },
+    pop: function() {
+        if(--loadingService.count === 0) {
+            loadingService.onFinished();
+        }
 
-		loadingService.display.value = (loadingService.max - loadingService.count) / loadingService.max;
-	}
+        loadingService.display.value = (loadingService.max - loadingService.count) / loadingService.max;
+    }
 };
 
 var isDebug = isMute = false;
@@ -46,61 +45,45 @@ var ballBody, goalieBody, wallBody;
 var ballBodyMaterial;
 var ballGround;
 
-// TODO: Replace this shit with a map we can iterate over
-var cheerSound = new Audio;
-var collideSound = new Audio;
-var crossbarSound = new Audio;
-var crowdSound = new Audio;
-var goalSound = new Audio;
-var jeerSound = new Audio;
-var kickSound = new Audio;
-if (crowdSound.canPlayType('audio/ogg')) {
-    cheerSound.src = 'sounds/cheer.ogg';
-    collideSound.src = 'sounds/collide.ogg';
-    crossbarSound.src = 'sounds/crossbar.ogg';
-    crowdSound.src = 'sounds/crowd1.ogg';
-    goalSound.src = 'sounds/goal.ogg';
-    jeerSound.src = 'sounds/jeer.ogg';
-    kickSound.src = 'sounds/kick.ogg'
-} else if (crowdSound.canPlayType('audio/mpeg')) {
-    cheerSound.src = 'sounds/cheer.mp3';
-    collideSound.src = 'sounds/collide.mp3';
-    crossbarSound.src = 'sounds/crossbar.mp3';
-    crowdSound.src = 'sounds/crowd1.mp3';
-    goalSound.src = 'sounds/goal.mp3';
-    jeerSound.src = 'sounds/jeer.mp3';
-    kickSound.src = 'sounds/kick.mp3'
+// load all sounds
+var sounds = {};
+var soundExtension;
+var testAudio = new Audio();
+
+if (testAudio.canPlayType('audio/ogg')) {
+    soundExtension = '.ogg';
+} else if (testAudio.canPlayType('audio/mpeg')) {
+    soundExtension = '.mp3';
+} else {
+    throw Error('This game cannot be played on toasters');
 }
-var sounds = [
-	cheerSound,
-	collideSound,
-	crossbarSound,
-	crowdSound,
-	goalSound,
-	jeerSound,
-	kickSound
-];
-loadingService.push(sounds.length);
-sounds.forEach(function(sound) {
-	sound.addEventListener('canplaythrough', loadingService.pop);
+
+[
+    'cheer', 'collide', 'crossbar', 'crowd', 'goal', 'jeer', 'kick'
+].forEach(function(soundName) {
+    var sound = new Audio();
+    sound.src = 'sounds/' + soundName + soundExtension;
+    loadingService.push();
+    sound.addEventListener('canplaythrough', loadingService.pop);
+
+    sounds[soundName] = sound;
 });
 
-var ballTexture = THREE.ImageUtils.loadTexture(
-	'textures/ballTexture.png',
-	new THREE.UVMapping(),
-	loadingService.pop
-);
+// load textures
+// TODO: use some kind of map like above
+// TODO: some of them are being loaded separately - sort this
 var pitchTexture = THREE.ImageUtils.loadTexture(
-	'textures/pitch.png',
-	new THREE.UVMapping(),
-	loadingService.pop
+    'textures/pitch.png',
+    new THREE.UVMapping(),
+    loadingService.pop
 );
-var wallTexture = THREE.ImageUtils.loadTexture(
-	'textures/mannequin.png',
-	new THREE.UVMapping(),
-	loadingService.pop
-);
-loadingService.push(3);
+// TODO: should be using this texture rather than the other
+// var wallTexture = THREE.ImageUtils.loadTexture(
+//     'textures/mannequin.png',
+//     new THREE.UVMapping(),
+//     loadingService.pop
+// );
+loadingService.push();
 
 var projector, ray, mouse3D;
 var mouseClick = {
@@ -138,35 +121,34 @@ document.addEventListener('mouseup', function (e) {
     e.preventDefault()
 });
 document.addEventListener('touchstart', function(e) {
-	if(e.targetTouches.length === 1) {
-		mouseDown(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
-	}
-	e.preventDefault();
+    if(e.targetTouches.length === 1) {
+        mouseDown(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
+    }
+    e.preventDefault();
 });
 document.addEventListener('touchmove', function(e) {
-	if(e.targetTouches.length === 1) {
-		mouseMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
-	}
-	e.preventDefault();
+    if(e.targetTouches.length === 1) {
+        mouseMove(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
+    }
+    e.preventDefault();
 });
 document.addEventListener('touchend', function(e) {
-	mouseUp();
-	e.preventDefault();
+    mouseUp();
+    e.preventDefault();
 });
 document.addEventListener('touchcancel', function(e) {
-	mouseUp();
-	e.preventDefault();
+    mouseUp();
+    e.preventDefault();
 });
 document.addEventListener('visibilitychange', function() {
-    if (document.webkitHidden === false) {
+    if (document.hidden === false) {
         lastTime = performance.now()
     }
 });
-document.addEventListener('webkitvisibilitychange', visibilityChange(), false);
 window.addEventListener('resize', onWindowResized, false);
 loadingService.registerFinFunc(function() {
-	var j = '<p class="popupText">Controls: click on the ball to choose spin, then drag back to choose direction and power.</p>' + '<p class="popupTitle">Click here to play!</p>';
-	printDialog(j, play, false);
+    var j = '<p class="popupText">Controls: click on the ball to choose spin, then drag back to choose direction and power.</p>' + '<p class="popupTitle">Click here to play!</p>';
+    printDialog(j, play, false);
 });
 init();
 
@@ -179,12 +161,12 @@ function init() {
     e.appendChild(renderer.domElement);
     camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1e3);
     renderer.shadowCameraNear = 3;
-	renderer.shadowCameraFar = 1000;
-	renderer.shadowCameraFov = 60;
-	renderer.shadowMapBias = 0.0039;
-	renderer.shadowMapDarkness = 0.5;
-	renderer.shadowMapWidth = 1024;
-	renderer.shadowMapHeight = 1024;
+    renderer.shadowCameraFar = 1000;
+    renderer.shadowCameraFov = 60;
+    renderer.shadowMapBias = 0.0039;
+    renderer.shadowMapDarkness = 0.5;
+    renderer.shadowMapWidth = 1024;
+    renderer.shadowMapHeight = 1024;
     renderer.shadowMapSoft = true;
     renderer.shadowMapEnabled = true;
     scene = new THREE.Scene;
@@ -231,11 +213,11 @@ function init() {
     p.position.set(0, 2.5, 48);
     scene.add(p);
     var d = THREE.ImageUtils.loadTexture(
-    	'textures/mannequins.png',
-    	new THREE.UVMapping(),
-    	loadingService.pop
-	);
-	loadingService.push();
+        'textures/mannequins.png',
+        new THREE.UVMapping(),
+        loadingService.pop
+    );
+    loadingService.push();
     var v = new THREE.MeshLambertMaterial({
         map: d,
         transparent: true,
@@ -252,11 +234,11 @@ function init() {
     wall.position.set(0, .9, 0);
     scene.add(wall);
     var d = THREE.ImageUtils.loadTexture(
-    	'textures/keeper.png',
-    	new THREE.UVMapping(),
-    	loadingService.pop
-	);
-	loadingService.push();
+        'textures/keeper.png',
+        new THREE.UVMapping(),
+        loadingService.pop
+    );
+    loadingService.push();
     var v = new THREE.MeshLambertMaterial({
         map: d,
         transparent: true
@@ -338,17 +320,19 @@ function init() {
     ballGround = new CANNON.ContactMaterial(N, ballBodyMaterial, 5, .5);
     world.addContactMaterial(ballGround);
     M.addEventListener('collide', function () {
-        if (!isMute) crossbarSound.play()
+        if (!isMute) sounds.crossbar.play()
     }, false);
     C.addEventListener('collide', function () {
-        if (!isMute) collideSound.play()
+        if (!isMute) sounds.collide.play()
     }, false);
     wallBody.addEventListener('collide', function () {
-        if (!isMute) collideSound.play()
+        if (!isMute) sounds.collide.play()
     }, false);
     goalieBody.addEventListener('collide', function () {
         if (state.phase == 'simulate') {
-            if (!isMute) collideSound.play();
+            if (!isMute) {
+                sounds.collide.play();
+            }
             stopBall();
             setTimeout(function () {
                 newBall(false)
@@ -402,19 +386,22 @@ function mouseUp() {
 }
 
 function play() {
-	// play all the sounds - android workaround
-	sounds.forEach(function(sound) {
-		sound.volume = 0;
-		sound.play();
-		sound.pause();
-		sound.position = 0;
-		sound.volume = 1;
-	});
+    // play all the sounds - android workaround
+    Object.keys(sounds).forEach(function(soundName) {
+        var sound = sounds[soundName];
+        sound.volume = 0;
+        sound.play();
+        sound.pause();
+        sound.position = 0;
+        sound.volume = 1;
+    });
 
     removeDialog();
-    crowdSound.loop = true;
-    if (!isMute) crowdSound.play();
-    collideSound.muted = true;
+    sounds.crowd.loop = true;
+    if (!isMute) {
+        sounds.crowd.play();
+    }
+    sounds.collide.muted = true;
     var e = document.getElementById('uiWrap');
     uiWrap.style.display = 'block';
     uiUpdate();
@@ -444,7 +431,7 @@ function printDialog(e, t, n) {
     curListener = t;
     if (t) {
         r.addEventListener('mousedown', t);
-    	r.addEventListener('touchstart', t);
+        r.addEventListener('touchstart', t);
     }
     if (n) {
         setTimeout(removeDialog, n)
@@ -468,15 +455,19 @@ function uiUpdate() {
     n.innerHTML = 'Goals: ' + state.score + '<br />Total tries: ' + state.shots
 }
 
-function playSound(e) {
-    e.currentTime = 0;
-    e.play()
+function playSound(sound) {
+    sound.currentTime = 0;
+    sound.play()
 }
 
 function doMute() {
     isMute = !isMute;
-    if (!isMute) crowdSound.play();
-    else crowdSound.pause()
+
+    if (!isMute) {
+        sounds.crowd.play();
+    } else {
+        sounds.crowd.pause();
+    }
 }
 
 function newBall(e) {
@@ -508,10 +499,10 @@ function newBall(e) {
         placeBall(xPos, ballSize, t)
     } else if (!isDebug) {
         setTimeout(function () {
-            printDialog('<p class='popupText'>You scored ' + state.score + ' goals.</p><p class='popupTitle'>Click here to try again!</p>', reset, false)
+            printDialog('<p class="popupText">You scored ' + state.score + ' goals.</p><p class="popupTitle">Click here to try again!</p>', reset, false)
         }, 1e3)
     }
-    collideSound.muted = true;
+    sounds.collide.muted = true;
     uiUpdate()
 }
 
@@ -559,8 +550,10 @@ function kickBall(e, t, n) {
     ballBody.force = r;
     var i = new CANNON.Vec3(-origin.y * 250, origin.x * 250, 0);
     ballBody.angularVelocity = i;
-    if (!isMute) kickSound.play();
-    collideSound.muted = false;
+    if (!isMute) {
+        sounds.kick.play();
+    }
+    sounds.collide.muted = false;
     state.shots++
 }
 
@@ -612,7 +605,7 @@ function update() {
             isIntersected = false
         }
     } else if (state.phase == 'drag') {
-    	var diffX = (mouseDrag.x - mouseClick.x) / window.innerHeight;
+        var diffX = (mouseDrag.x - mouseClick.x) / window.innerHeight;
         var diffY = (mouseDrag.y - mouseClick.y) / window.innerHeight;
         shotDir.set(goalDir.x + Math.sin(diffX), 0, goalDir.z + 1 - Math.cos(diffX));
         var t = new THREE.Vector3;
@@ -620,8 +613,8 @@ function update() {
         arrow.position = t;
         arrow.rotation.set(Math.PI / 2, 0, -Math.atan(shotDir.x / shotDir.z));
         if (diffY > 0) {
-        	shotPow = diffY;
-        	shotPow = shotPow > 0.25 ? 0.25 : shotPow;
+            shotPow = diffY;
+            shotPow = shotPow > 0.25 ? 0.25 : shotPow;
             arrow.scale.y = shotPow;
             arrow.material.visible = true
         } else {
@@ -647,10 +640,10 @@ function update() {
             if (ballBody.position.x > -3.72 && ballBody.position.x < 3.72 && ballBody.position.y < 2.56) {
                 stopBall();
                 if (!isMute) {
-                    goalSound.play();
-                    playSound(cheerSound)
+                    sounds.goal.play();
+                    playSound(sounds.cheer);
                 }
-                printDialog('<p class='popupTitle'>Goal!</p>', false, 1e3);
+                printDialog('<p class="popupTitle">Goal!</p>', false, 1e3);
                 setTimeout(function () {
                     newBall(true)
                 }, 1e3);
@@ -658,9 +651,11 @@ function update() {
                 state.phase = 'wait'
             } else {
                 if (ballBody.position.x < -5.2 || ballBody.position.x > 5.2 || ballBody.position.y > 3.2) {
-                    if (!isMute) playSound(jeerSound)
+                    if (!isMute) {
+                        playSound(sounds.jeer);
+                    }
                 }
-                printDialog('<p class='popupTitle'>Miss...</p>', false, 1e3);
+                printDialog('<p class="popupTitle">Miss...</p>', false, 1e3);
                 setTimeout(function () {
                     newBall(false)
                 }, 1e3);
